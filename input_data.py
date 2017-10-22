@@ -67,33 +67,6 @@ def read_and_decode(filename, batch_size):
 img_batch, label_batch = read_and_decode('cat_and_dog_train.tfrecords',batch_size)
 
 
-'''
-with tf.Session()  as sess:
-    i = 0
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(coord=coord)
-
-    try:
-        while not coord.should_stop() and i<1:
-            # just plot one batch size
-            image, label = sess.run([img_batch, label_batch])
-            for j in np.arange(5):
-                print('label: %d' % label[j])
-                plt.imshow(image[j,:,:,:])
-                plt.show()
-            i+=1
-    except tf.errors.OutOfRangeError:
-        print('done!')
-    finally:
-        coord.request_stop()
-    coord.join(threads)
-'''
-
-'''
-##########################################################################   
-'''
-
-    
 def weight(shape):
     return tf.Variable(tf.truncated_normal(shape, stddev=0.1), name = 'W')
     
