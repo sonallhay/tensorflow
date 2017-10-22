@@ -4,7 +4,7 @@ Created on Sat Oct 21 13:33:52 2017
 
 @author: Chen
 """
-#%%
+
 import os 
 import tensorflow as tf 
 import matplotlib.pyplot as plt 
@@ -14,8 +14,6 @@ batch_size=100
 cwd='D:\data\\' 
 classes={'cats','dogs'} 
 
-
-#%%
 '''
 生成TFRecord 文件
 '''
@@ -35,9 +33,6 @@ for index,name in enumerate(classes):
         writer.write(example.SerializeToString())  
 
 writer.close()
-
-
-#%%
 
 '''
 讀取TFRecord文件By 隊列
@@ -69,34 +64,6 @@ def read_and_decode(filename, batch_size):
 img_batch, label_batch = read_and_decode('cat_and_dog_train.tfrecords',batch_size)
 
 
-#%%
-
-'''
-with tf.Session()  as sess:
-    i = 0
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(coord=coord)
-
-    try:
-        while not coord.should_stop() and i<1:
-            # just plot one batch size
-            image, label = sess.run([img_batch, label_batch])
-            for j in np.arange(5):
-                print('label: %d' % label[j])
-                plt.imshow(image[j,:,:,:])
-                plt.show()
-            i+=1
-    except tf.errors.OutOfRangeError:
-        print('done!')
-    finally:
-        coord.request_stop()
-    coord.join(threads)
-'''
-
-'''
-##########################################################################   
-''' 
-#%%
 def inference(images, batch_size, n_classes):
     '''Build the model
     Args:
@@ -190,7 +157,7 @@ def inference(images, batch_size, n_classes):
     
     return softmax_linear
 
-#%%
+
 def losses(logits, labels):
     '''Compute loss from logits and labels
     Args:
@@ -207,7 +174,7 @@ def losses(logits, labels):
         tf.summary.scalar(scope.name+'/loss', loss)
     return loss
 
-#%%
+
 def trainning(loss, learning_rate):
     '''Training ops, the Op returned by this function is what must be passed to 
         'sess.run()' call to cause the model to train.
@@ -224,7 +191,7 @@ def trainning(loss, learning_rate):
         train_op = optimizer.minimize(loss, global_step= global_step)
     return train_op
 
-#%%
+
 def evaluation(logits, labels):
   """Evaluate the quality of the logits at predicting the label.
   Args:
@@ -243,7 +210,7 @@ def evaluation(logits, labels):
   return accuracy
 
 
-#%%
+
 n_classes = 2
 learning_rate = 0.00001
 
@@ -255,11 +222,9 @@ train_acc = evaluation(train_logits, label_batch)
 
 
 with tf.Session() as sess:
-  
     sess.run(tf.global_variables_initializer())
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-    
     try:
         for step in range(15000):    
             if coord.should_stop():
@@ -273,94 +238,3 @@ with tf.Session() as sess:
     finally:
         coord.request_stop()
     coord.join(threads)
-
-
-
-
-
-
-
-
-
-
-#%%
-'''
-def weight(shape):
-    return tf.Variable(tf.truncated_normal(shape, stddev=0.1), name = 'W')
-    
-def bias(shape):
-    return tf.Variable(tf.constant(0.1,shape=shape), name = 'b')
-    
-def conv2d(x, W):
-    return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding = 'SAME')
-    
-def max_pool_2x2(x):
-    return tf.nn.max_pool(x, ksize = [1, 2, 2, 1],
-                         strides = [1, 2, 2, 1],
-                        padding = 'SAME')    
-
-with tf.name_scope('C1_Conv'):
-    W1 = weight([5,5,3,16])
-    b1 = bias([16])
-    Conv1=conv2d(img_batch, W1)+ b1
-    C1_Conv = tf.nn.relu(Conv1 )
-    
-with tf.name_scope('C1_Pool'):
-    C1_Pool = max_pool_2x2(C1_Conv)
-        
-with tf.name_scope('C2_Conv'):
-    W2 = weight([5,5,16,36])
-    b2 = bias([36])
-    Conv2=conv2d(C1_Pool, W2)+ b2
-    C2_Conv = tf.nn.relu(Conv2)
-    
-with tf.name_scope('C2_Pool'):
-    C2_Pool = max_pool_2x2(C2_Conv) 
-        
-with tf.name_scope('D_Flat'):
-    D_Flat = tf.reshape(C2_Pool, shape=[batch_size, 36864])
-        
-with tf.name_scope('D_Hidden_Layer'):
-    W3 = weight([36864, 128])
-    b3 = bias([128])
-    D_Hidden = tf.nn.relu(tf.matmul(D_Flat, W3) + b3)
-    D_Hidden_Dropout = tf.nn.dropout(D_Hidden, keep_prob = 0.8)
-        
-with tf.name_scope('Output_Layer'):
-    W4 = weight([128,2])
-    b4 = bias([2])
-    y_predict= tf.add(tf.matmul(D_Hidden_Dropout, W4), b4)
-        
-with tf.name_scope('optimizer'):
-    loss_function = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits
-                                   (logits = y_predict,
-                                    labels = label_batch))
-    optimizer = tf.train.AdamOptimizer(1e-4).minimize(loss_function)
-with tf.name_scope('Evaluate_model'):
-    correct_prediction = tf.nn.in_top_k(y_predict, label_batch, 1)
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    
-init = tf.global_variables_initializer()
-
-from time import time
-startTime=time()
-
-with tf.Session() as sess:
-    sess.run(init)
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess,coord=coord)
-    try:
-        for step in range(15000):    
-            if coord.should_stop():
-                break
-            if step % 50 == 0:
-                _, loss, acc = sess.run([optimizer,loss_function,accuracy])
-                print("STEP= %d, Loss= %.2f, Accuracy=%.2f" %(step, loss, acc))
-        duration =time()-startTime
-        print("Train Finished takes:",duration) 
-    except tf.errors.OutOfRangeError:
-        print("Done training")
-    finally:
-        coord.request_stop()
-    coord.join(threads)
-'''
